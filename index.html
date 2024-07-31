@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teachable Machine Pose Model</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lalezar&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        text-align: center;
+        font-family: "Lalezar", system-ui;
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 20px;
+      }
+
+      .tilte {
+        font-weight: bold;
+        font-size: x-large;
+        margin: 0;
+      }
+
+      .button {
+        border: 0;
+        border-radius: 0.25em;
+        background: initial;
+        background-color: #7066e0;
+        color: #fff;
+        font-size: 1em;
+        margin: 0.3125em;
+        padding: 0.625em 1.1em;
+        transition: box-shadow 0.1s;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0);
+        font-weight: 500;
+        min-width: fit-content;
+        max-width: 50%;
+      }
+
+      .button:disabled {
+        cursor: default;
+      }
+
+      .button:focus {
+        background-color: #655cc9;
+      }
+
+      canvas,
+      #resetButton {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div style="display: flex; gap: 20px">
+        <div>
+          <p class="tilte">الهدف</p>
+          <p id="target">0</p>
+        </div>
+        <div>
+          <p class="tilte">العداد</p>
+          <p id="score">0</p>
+        </div>
+      </div>
+      <div><canvas id="canvas"></canvas></div>
+      <div>
+        <button class="button" id="startStopButton">بدء</button>
+        <button class="button" id="resetButton" onclick="location.reload();">
+          إعادة
+        </button>
+      </div>
+    </div>
+    <script>
+      let model,
+        webcam,
+        ctx,
+        labelContainer,
+        mid = 0,
+        down = 0,
+        last = "null";
+      let isRunning = false;
+      let animationFrameId;
+      let targetScore = 0;
+
+      const startStopButton = document.getElementById("startStopButton");
+      startStopButton.addEventListener("click", toggleStartStop);
+
+      function check() {
+        score = Math.floor((mid + down) / 3);
+        document.getElementById("score").textContent = score;
+        if (score == mid && score == down) {
+          last = "null";
+        }
+        checkScore();
+      }
+
+      async function init() {
+        const URL = "https://teachablemachine.withgoogle.com/models/blh4yWyej/";
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        model = await tmPose.load(modelURL, metadataURL);
+
+        webcam = new tmPose.Webcam(200, 200, true);
+        await webcam.setup();
+
+        const resetButton = document.getElementById("resetButton");
+
+        const canvas = document.getElementById("canvas");
+        canvas.width = 200;
+        canvas.height = 200;
+        ctx = canvas.getContext("2d");
+
+        await getTargetScore();
+      }
+
+      async function getTargetScore() {
+        const { value: inputValue } = await Swal.fire({
+          title: "أدخل النتيجة المستهدفة",
+          input: "number",
+          inputPlaceholder: "أدخل رقمًا",
+          confirmButtonText: "تأكيد",
+          allowOutsideClick: false,
+          inputValidator: value => {
+            if (!value || value <= 0) {
+              return "الرجاء إدخال رقم صحيح أكبر من 0";
+            }
+          },
+        });
+
+        if (inputValue) {
+          targetScore = parseInt(inputValue);
+          document.getElementById("target").textContent = targetScore;
+        }
+      }
+
+      function toggleStartStop() {
+        if (isRunning) {
+          stopPrediction();
+          startStopButton.textContent = "بدء";
+        } else {
+          startPrediction();
+          startStopButton.textContent = "إيقاف مؤقت";
+        }
+        isRunning = !isRunning;
+      }
+
+      async function startPrediction() {
+        await webcam.play();
+        canvas.style.display = "block";
+        resetButton.style.display = "none";
+        loop();
+      }
+
+      function stopPrediction() {
+        webcam.pause();
+        cancelAnimationFrame(animationFrameId);
+        clearCanvas();
+        canvas.style.display = "none";
+        resetButton.style.display = "inline-block";
+      }
+
+      function clearCanvas() {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      }
+
+      async function loop() {
+        webcam.update();
+        await predict();
+        animationFrameId = window.requestAnimationFrame(loop);
+      }
+
+      async function predict() {
+        const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+        const prediction = await model.predict(posenetOutput);
+
+        for (let j = 0; j < prediction.length; j++) {
+          if (
+            prediction[j].className === "Mid" &&
+            prediction[j].probability > 0.8 &&
+            last != "mid"
+          ) {
+            mid++;
+            last = "mid";
+            console.log("mid " + mid);
+            check();
+          }
+          if (
+            prediction[j].className === "Down" &&
+            prediction[j].probability > 0.8 &&
+            last != "down"
+          ) {
+            down++;
+            last = "down";
+            console.log("down " + down);
+            check();
+          }
+        }
+
+        ctx.drawImage(webcam.canvas, 0, 0);
+        if (pose) {
+          const minPartConfidence = 0.5;
+          tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+          tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+        }
+      }
+
+      function checkScore() {
+        if (score >= targetScore) {
+          stopPrediction();
+          startStopButton.style.display = "none";
+          resetButton.style.display = "none";
+          Swal.fire({
+            title: "تهانينا!",
+            text: "لقد وصلت إلى النتيجة المستهدفة!",
+            icon: "success",
+            confirmButtonText: "إعادة",
+          }).then(result => {
+            if (result.isConfirmed) {
+              location.reload();
+            }
+          });
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>
