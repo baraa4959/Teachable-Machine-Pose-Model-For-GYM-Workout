@@ -64,7 +64,7 @@
       }
 
       canvas {
-        height: 500px;
+        width: 90%;
       }
     </style>
   </head>
@@ -80,7 +80,7 @@
           <p id="score">0</p>
         </div>
       </div>
-      <div><canvas id="canvas"></canvas></div>
+      <div style="display: contents"><canvas id="canvas"></canvas></div>
       <div>
         <button class="button" id="startStopButton">بدء</button>
         <button class="button" id="resetButton" onclick="location.reload();">
@@ -119,14 +119,14 @@
 
         model = await tmPose.load(modelURL, metadataURL);
 
-        webcam = new tmPose.Webcam(1080, 1920, true);
+        webcam = new tmPose.Webcam(1920, 1080, true);
         await webcam.setup();
 
         const resetButton = document.getElementById("resetButton");
 
         const canvas = document.getElementById("canvas");
-        canvas.height = 1920;
-        canvas.width = 1080;
+        canvas.height = 1080;
+        canvas.width = 1920;
         ctx = canvas.getContext("2d");
 
         await getTargetScore();
