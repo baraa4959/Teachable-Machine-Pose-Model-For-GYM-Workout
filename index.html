@@ -113,12 +113,6 @@
       }
 
       async function init() {
-        const URL = "https://teachablemachine.withgoogle.com/models/blh4yWyej/";
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-
-        model = await tmPose.load(modelURL, metadataURL);
-
         webcam = new tmPose.Webcam(1920, 1080, true);
         await webcam.setup();
 
@@ -129,7 +123,30 @@
         canvas.width = 1920;
         ctx = canvas.getContext("2d");
 
-        await getTargetScore();
+        await getWorkout();
+      }
+
+      async function getWorkout() {
+        const { value: inputValue } = await Swal.fire({
+          title: "اختر التمرين",
+          input: "number",
+          input: "select",
+          inputOptions: {
+            blh4yWyej: "تمرين عضلات البايسبس",
+            zVYTgwWfK: "رفع الساق",
+          },
+          inputPlaceholder: "اختر التمرين",
+          confirmButtonText: "تأكيد",
+          allowOutsideClick: false,
+        });
+
+        const URL = `https://teachablemachine.withgoogle.com/models/${inputValue}/`;
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        model = await tmPose.load(modelURL, metadataURL);
+
+        getTargetScore();
       }
 
       async function getTargetScore() {
@@ -200,7 +217,6 @@
           ) {
             mid++;
             last = "mid";
-            console.log("mid " + mid);
             check();
           }
           if (
@@ -210,7 +226,6 @@
           ) {
             down++;
             last = "down";
-            console.log("down " + down);
             check();
           }
         }
