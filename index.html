@@ -62,6 +62,10 @@
       #resetButton {
         display: none;
       }
+
+      canvas {
+        height: 500px;
+      }
     </style>
   </head>
   <body>
@@ -115,14 +119,14 @@
 
         model = await tmPose.load(modelURL, metadataURL);
 
-        webcam = new tmPose.Webcam(200, 200, true);
+        webcam = new tmPose.Webcam(1080, 1920, true);
         await webcam.setup();
 
         const resetButton = document.getElementById("resetButton");
 
         const canvas = document.getElementById("canvas");
-        canvas.width = 200;
-        canvas.height = 200;
+        canvas.height = 1920;
+        canvas.width = 1080;
         ctx = canvas.getContext("2d");
 
         await getTargetScore();
